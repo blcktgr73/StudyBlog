@@ -1,11 +1,21 @@
 "use client"
 
 import Link from "next/link"
-import { BookOpen } from "lucide-react"
+import { BookOpen, User, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/common/theme-toggle"
+import { useAuthStore } from "@/store/auth-store"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar } from "@/components/ui/avatar"
 
 export function Header() {
+  const { user, isAuthenticated, signOut } = useAuthStore();
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 max-w-screen-2xl items-center">
@@ -47,12 +57,61 @@ export function Header() {
             {/* Search will go here in next iteration */}
           </div>
           <nav className="flex items-center space-x-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/write">Write</Link>
-            </Button>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/login">Login</Link>
-            </Button>
+            {isAuthenticated ? (
+              <>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/write">Write</Link>
+                </Button>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                        {user?.avatarUrl ? (
+                          <img src={user.avatarUrl} alt={user.fullName || user.email} />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-muted">
+                            <User className="h-4 w-4" />
+                          </div>
+                        )}
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <div className="flex items-center justify-start gap-2 p-2">
+                      <div className="flex flex-col space-y-1 leading-none">
+                        <p className="font-medium">{user?.fullName || 'User'}</p>
+                        <p className="w-[200px] truncate text-sm text-muted-foreground">
+                          {user?.email}
+                        </p>
+                      </div>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard">Dashboard</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile">Profile</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => signOut()}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/auth/login">Login</Link>
+                </Button>
+                <Button size="sm" asChild>
+                  <Link href="/auth/signup">Sign up</Link>
+                </Button>
+              </>
+            )}
+            
             <ThemeToggle />
           </nav>
         </div>
