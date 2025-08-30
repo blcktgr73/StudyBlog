@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createPostSupabase, getPostsSupabase } from '@/lib/database/posts-supabase';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 // GET /api/posts - Get posts with pagination and filtering
 export async function GET(request: NextRequest) {
   try {

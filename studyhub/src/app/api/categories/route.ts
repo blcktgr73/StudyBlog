@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getCategoriesSupabase } from '@/lib/database/posts-supabase';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   console.log('GET /api/categories - Starting request');
   try {

@@ -5,6 +5,9 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/lib/database/connection';
 import { posts } from '@/lib/database/schema';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 interface Params {
   id: string;
 }

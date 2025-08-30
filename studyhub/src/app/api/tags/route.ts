@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getTagsSupabase } from '@/lib/database/posts-supabase';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   console.log('GET /api/tags - Starting request');
   try {
