@@ -18,7 +18,8 @@ import {
   User, 
   ArrowLeft,
   Share2,
-  Bookmark
+  Bookmark,
+  Home
 } from 'lucide-react';
 
 interface PostPageProps {
@@ -69,13 +70,33 @@ export default async function PostPage({ params }: PostPageProps) {
   return (
     <div className="min-h-screen bg-background">
       <div className="container max-w-4xl mx-auto p-6">
-        {/* Back Button */}
-        <Link href="/posts">
-          <Button variant="outline" size="sm" className="mb-6">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Posts
-          </Button>
-        </Link>
+        {/* Back Button and Navigation */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-2">
+            <Link href="/">
+              <Button variant="outline" size="sm">
+                <Home className="mr-2 h-4 w-4" />
+                Home
+              </Button>
+            </Link>
+            <Link href="/posts">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                All Posts
+              </Button>
+            </Link>
+          </div>
+          
+          {/* Show Dashboard link if user is the author */}
+          {currentUserId && currentUserId === post.authorId && (
+            <Link href="/dashboard">
+              <Button variant="outline" size="sm">
+                <User className="mr-2 h-4 w-4" />
+                Dashboard
+              </Button>
+            </Link>
+          )}
+        </div>
 
         {/* Header */}
         <header className="mb-8">
@@ -154,7 +175,7 @@ export default async function PostPage({ params }: PostPageProps) {
             {/* Author Actions */}
             {isAuthor && (
               <Suspense fallback={<div>Loading...</div>}>
-                <PostActions postId={post.id} postSlug={post.slug} />
+                <PostActions postId={post.id} postSlug={post.slug} isPublished={post.isPublished} />
               </Suspense>
             )}
           </div>

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
-import { Loader2, Search, Calendar, Clock, Eye, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Search, Calendar, Clock, Eye, User, ChevronLeft, ChevronRight, Home } from 'lucide-react';
 import type { PostWithDetails } from '@/lib/database/posts';
 
 interface PostsResponse {
@@ -101,7 +101,15 @@ function PostsList() {
       <div className="container max-w-6xl mx-auto p-6">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-4">Blog Posts</h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-4xl font-bold">Blog Posts</h1>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/">
+                <Home className="mr-2 h-4 w-4" />
+                Home
+              </Link>
+            </Button>
+          </div>
           
           {/* Search */}
           <form onSubmit={handleSearch} className="flex gap-2 max-w-md">

@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/auth-store';
-import { Loader2, User, LogOut, Plus, Edit, Eye, Calendar, Clock } from 'lucide-react';
+import { supabase } from '@/lib/supabase/client';
+import { Loader2, User, LogOut, Plus, Edit, Eye, Calendar, Clock, Trash2, Home } from 'lucide-react';
 import type { PostWithDetails } from '@/lib/database/posts';
 
 export default function DashboardPage() {
@@ -15,6 +16,8 @@ export default function DashboardPage() {
   const { user, isLoading, isAuthenticated, signOut, initialize } = useAuthStore();
   const [userPosts, setUserPosts] = useState<PostWithDetails[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'all' | 'published' | 'drafts'>('all');
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
   useEffect(() => {
     initialize();
@@ -31,7 +34,15 @@ export default function DashboardPage() {
       if (!user) return;
       
       try {
-        const response = await fetch(`/api/posts?author=${user.id}`);
+        // Get the session token from Supabase client
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers: Record<string, string> = {};
+        
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+
+        const response = await fetch(`/api/posts?author=${user.id}`, { headers });
         if (response.ok) {
           const data = await response.json();
           setUserPosts(data.posts);
@@ -51,6 +62,41 @@ export default function DashboardPage() {
   const handleSignOut = async () => {
     await signOut();
     router.push('/');
+  };
+
+  const handleDeletePost = async (postId: string, postTitle: string) => {
+    if (!confirm(`Are you sure you want to delete "${postTitle}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeleteLoading(postId);
+    try {
+      // Get the session token from Supabase client
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetch(`/api/posts/${postId}`, {
+        method: 'DELETE',
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Failed to delete post: ${response.status} - ${errorData}`);
+      }
+
+      // Remove the deleted post from the state
+      setUserPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert('Failed to delete post. Please try again.');
+    } finally {
+      setDeleteLoading(null);
+    }
   };
 
   const formatDate = (date: string | Date | null) => {
@@ -85,17 +131,49 @@ export default function DashboardPage() {
     );
   }
 
+  // Debug: Log the first post to check isPublished field
+  if (userPosts.length > 0) {
+    console.log('First post data:', userPosts[0]);
+    console.log('isPublished type:', typeof userPosts[0].isPublished);
+    console.log('isPublished value:', userPosts[0].isPublished);
+  }
+
   const publishedPosts = userPosts.filter(post => post.isPublished);
-  // const draftPosts = userPosts.filter(post => !post.isPublished);
+  const draftPosts = userPosts.filter(post => !post.isPublished);
+  
+  console.log('Total posts:', userPosts.length);
+  console.log('Published posts:', publishedPosts.length);
+  console.log('Draft posts:', draftPosts.length);
+  
   const totalViews = userPosts.reduce((sum, post) => sum + post.viewCount, 0);
   const totalLikes = userPosts.reduce((sum, post) => sum + post.likeCount, 0);
+
+  // Filter posts based on active tab
+  const filteredPosts = (() => {
+    switch (activeTab) {
+      case 'published':
+        return publishedPosts;
+      case 'drafts':
+        return draftPosts;
+      default:
+        return userPosts;
+    }
+  })();
 
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <div className="flex items-center space-x-4">
+            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/">
+                <Home className="mr-2 h-4 w-4" />
+                Home
+              </Link>
+            </Button>
+          </div>
           <div className="flex items-center space-x-2">
             <Button asChild>
               <Link href="/write">
@@ -138,8 +216,8 @@ export default function DashboardPage() {
             <CardContent className="p-6">
               <div className="flex items-center">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Views</p>
-                  <p className="text-2xl font-bold">{totalViews}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Drafts</p>
+                  <p className="text-2xl font-bold">{draftPosts.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -149,8 +227,9 @@ export default function DashboardPage() {
             <CardContent className="p-6">
               <div className="flex items-center">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Likes</p>
-                  <p className="text-2xl font-bold">{totalLikes}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Engagement</p>
+                  <p className="text-2xl font-bold">{totalViews + totalLikes}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{totalViews} views • {totalLikes} likes</p>
                 </div>
               </div>
             </CardContent>
@@ -192,22 +271,57 @@ export default function DashboardPage() {
                 </Link>
               </Button>
             </div>
+            
+            {/* Tabs */}
+            <div className="flex space-x-1 bg-muted p-1 rounded-lg w-fit">
+              <Button
+                variant={activeTab === 'all' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveTab('all')}
+                className="px-3 py-1.5 h-auto text-sm"
+              >
+                All ({userPosts.length})
+              </Button>
+              <Button
+                variant={activeTab === 'published' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveTab('published')}
+                className="px-3 py-1.5 h-auto text-sm"
+              >
+                Published ({publishedPosts.length})
+              </Button>
+              <Button
+                variant={activeTab === 'drafts' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveTab('drafts')}
+                className="px-3 py-1.5 h-auto text-sm"
+              >
+                Drafts ({draftPosts.length})
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {postsLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin" />
               </div>
-            ) : userPosts.length === 0 ? (
+            ) : filteredPosts.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground mb-4">You haven&apos;t written any posts yet.</p>
+                <p className="text-muted-foreground mb-4">
+                  {activeTab === 'all' 
+                    ? "You haven't written any posts yet." 
+                    : activeTab === 'published' 
+                    ? "No published posts yet." 
+                    : "No drafts yet."
+                  }
+                </p>
                 <Button asChild>
                   <Link href="/write">Write Your First Post</Link>
                 </Button>
               </div>
             ) : (
               <div className="space-y-4">
-                {userPosts.map((post) => (
+                {filteredPosts.map((post) => (
                   <div key={post.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
@@ -229,12 +343,28 @@ export default function DashboardPage() {
                           </Badge>
                         )}
                       </div>
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/write/${post.slug}`}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </Link>
-                      </Button>
+                      <div className="flex items-center space-x-2">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/write/${post.slug}`}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </Link>
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleDeletePost(post.id, post.title)}
+                          disabled={deleteLoading === post.id}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          {deleteLoading === post.id ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="mr-2 h-4 w-4" />
+                          )}
+                          Delete
+                        </Button>
+                      </div>
                     </div>
                     
                     <p className="text-sm text-muted-foreground mb-3 line-clamp-2">

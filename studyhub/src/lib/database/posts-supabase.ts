@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import type { PostWithDetails } from './posts';
 import { createSlug, processPostContent } from './posts';
 
@@ -46,6 +47,7 @@ export async function getPostsSupabase(options: {
   search?: string;
   authorId?: string;
   published?: boolean;
+  slug?: string;
 }) {
   const {
     page = 1,
@@ -53,10 +55,13 @@ export async function getPostsSupabase(options: {
     categorySlug,
     search,
     authorId,
-    published = true,
+    published,
+    slug,
   } = options;
 
-  const supabase = await createClient();
+  // Use admin client if querying by author OR if published is undefined (for draft access)
+  const shouldUseAdmin = authorId || published === undefined;
+  const supabase = shouldUseAdmin ? supabaseAdmin : await createClient();
   const offset = (page - 1) * limit;
 
   try {
@@ -70,11 +75,19 @@ export async function getPostsSupabase(options: {
       `);
 
     // Apply filters
+    console.log('getPostsSupabase - applying filters:');
+    console.log('- published:', published);
+    console.log('- authorId:', authorId);
+    
     if (published !== undefined) {
+      console.log('- Adding is_published filter:', published);
       query = query.eq('is_published', published);
+    } else {
+      console.log('- No is_published filter (should get all posts)');
     }
 
     if (authorId) {
+      console.log('- Adding author_id filter:', authorId);
       query = query.eq('author_id', authorId);
     }
 
@@ -84,6 +97,10 @@ export async function getPostsSupabase(options: {
 
     if (search) {
       query = query.or(`title.ilike.%${search}%, excerpt.ilike.%${search}%`);
+    }
+
+    if (slug) {
+      query = query.eq('slug', slug);
     }
 
     // Apply ordering and pagination

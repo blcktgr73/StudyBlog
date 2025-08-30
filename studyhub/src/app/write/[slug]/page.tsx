@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useAuthStore } from '@/store/auth-store';
 import { supabase } from '@/lib/supabase/client';
-// Removed direct storage imports, now using API endpoint
+import { uploadImage } from '@/lib/supabase/storage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Save, Eye, Upload, X } from 'lucide-react';
+import { Loader2, Save, Eye, Upload, X, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 import type { Category, Tag } from '@/lib/database/schema';
 
 // Dynamically import markdown editor to avoid SSR issues
@@ -23,10 +24,16 @@ const MDEditor = dynamic(() => import('@uiw/react-md-editor'), {
   ),
 });
 
-export default function WritePage() {
+interface PostEditPageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export default function PostEditPage({ params }: PostEditPageProps) {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
   
+  const [slug, setSlug] = useState<string>('');
+  const [postId, setPostId] = useState<string>('');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [coverImage, setCoverImage] = useState('');
@@ -36,6 +43,15 @@ export default function WritePage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPublished, setIsPublished] = useState(false);
+
+  // Get slug from params
+  useEffect(() => {
+    params.then(({ slug: paramSlug }) => {
+      setSlug(paramSlug);
+    });
+  }, [params]);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -44,14 +60,54 @@ export default function WritePage() {
     }
   }, [authLoading, isAuthenticated, router]);
 
-  // Load categories and tags
+  // Load post data, categories, and tags
   useEffect(() => {
     const loadData = async () => {
+      if (!slug || !isAuthenticated) return;
+
+      setIsLoading(true);
       try {
-        const [categoriesRes, tagsRes] = await Promise.all([
+        // Get the session token from Supabase client
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers: Record<string, string> = {};
+        
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+
+        const [postRes, categoriesRes, tagsRes] = await Promise.all([
+          fetch(`/api/posts?slug=${slug}`, { headers }),
           fetch('/api/categories'),
           fetch('/api/tags'),
         ]);
+        
+        if (postRes.ok) {
+          const { posts } = await postRes.json();
+          const post = posts[0];
+          
+          if (!post) {
+            router.push('/404');
+            return;
+          }
+
+          // Check if user is the author
+          if (post.authorId !== user?.id) {
+            router.push('/403');
+            return;
+          }
+
+          // Set post data
+          setPostId(post.id);
+          setTitle(post.title);
+          setContent(post.content);
+          setCoverImage(post.coverImage || '');
+          setSelectedCategory(post.categoryId || '');
+          setSelectedTags(post.tags.map((tag: any) => tag.id));
+          setIsPublished(post.isPublished);
+        } else {
+          router.push('/404');
+          return;
+        }
         
         if (categoriesRes.ok) {
           const categoriesData = await categoriesRes.json();
@@ -64,61 +120,117 @@ export default function WritePage() {
         }
       } catch (error) {
         console.error('Error loading data:', error);
+        router.push('/404');
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    if (isAuthenticated) {
-      loadData();
-    }
-  }, [isAuthenticated]);
+    loadData();
+  }, [slug, isAuthenticated, user?.id, router]);
 
   const handleSave = async (publish: boolean = false) => {
+    console.log('handleSave called with publish:', publish);
+    console.log('Current state:', { 
+      user: !!user, 
+      title: title.trim(), 
+      content: content.length, 
+      postId 
+    });
+    
     if (!user || !title.trim() || !content.trim()) {
       alert('Title and content are required');
       return;
     }
 
+    console.log('Setting isSaving to true...');
     setIsSaving(true);
     
     try {
-      // Get the session token from Supabase client
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Using auth store to get session...');
+      // Try to get session directly from auth store or localStorage
+      let accessToken = null;
+      
+      // Method 1: Try localStorage
+      try {
+        const storedSession = localStorage.getItem('sb-dhrzglinsvpyeqnhkcct-auth-token');
+        if (storedSession) {
+          const sessionData = JSON.parse(storedSession);
+          accessToken = sessionData?.access_token;
+          console.log('Got token from localStorage:', !!accessToken);
+        }
+      } catch (e) {
+        console.log('localStorage method failed:', e);
+      }
+      
+      // Method 2: If localStorage failed, try direct supabase call with timeout
+      if (!accessToken) {
+        try {
+          console.log('Trying supabase.auth.getSession() with timeout...');
+          const { data: { session } } = await Promise.race([
+            supabase.auth.getSession(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
+          ]) as any;
+          
+          accessToken = session?.access_token;
+          console.log('Got token from supabase:', !!accessToken);
+        } catch (e) {
+          console.log('Supabase session failed:', e);
+        }
+      }
+      
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+        console.log('Authorization header added with token');
+      } else {
+        console.warn('No access token available, using cookies only');
       }
 
-      const response = await fetch('/api/posts', {
-        method: 'POST',
+      console.log('Edit: Making PATCH request with headers:', headers);
+      console.log('Request URL:', `/api/posts/${postId}`);
+
+      const requestBody = {
+        title: title.trim(),
+        content: content.trim(),
+        categoryId: selectedCategory || null,
+        tagIds: selectedTags,
+        isPublished: publish,
+        coverImage: coverImage || null,
+      };
+      
+      console.log('Request body:', requestBody);
+
+      const response = await fetch(`/api/posts/${postId}`, {
+        method: 'PATCH',
         headers,
-        body: JSON.stringify({
-          title: title.trim(),
-          content: content.trim(),
-          categoryId: selectedCategory || null,
-          tagIds: selectedTags,
-          isPublished: publish,
-          coverImage: coverImage || null,
-        }),
+        body: JSON.stringify(requestBody),
       });
+
+      console.log('Response received:', response.status, response.statusText);
 
       if (!response.ok) {
         const errorData = await response.text();
         console.error('API Error Response:', response.status, errorData);
-        throw new Error(`Failed to save post: ${response.status} - ${errorData}`);
+        throw new Error(`Failed to update post: ${response.status} - ${errorData}`);
       }
 
-      const post = await response.json();
+      console.log('Parsing response JSON...');
+      const updatedPost = await response.json();
+      console.log('Updated post:', updatedPost);
       
+      console.log('Redirecting...');
       if (publish) {
-        router.push(`/posts/${post.slug}`);
+        router.push(`/posts/${updatedPost.slug}`);
       } else {
         router.push('/dashboard');
       }
     } catch (error) {
-      console.error('Error saving post:', error);
-      alert('Failed to save post. Please try again.');
+      console.error('Error updating post:', error);
+      alert('Failed to update post. Please try again.');
     } finally {
+      console.log('Setting isSaving to false...');
       setIsSaving(false);
     }
   };
@@ -133,78 +245,30 @@ export default function WritePage() {
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) {
-      console.log('No file selected');
-      return;
-    }
+    if (!file) return;
 
-    console.log('File selected for upload:', file.name, file.type, file.size);
     setIsUploadingImage(true);
     
     try {
-      // Check file size (5MB limit)
-      if (file.size > 5242880) {
-        throw new Error('File size must be less than 5MB');
-      }
-
-      // Check file type
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-      if (!allowedTypes.includes(file.type)) {
-        throw new Error('Only JPEG, PNG, WebP, and GIF files are allowed');
-      }
-
-      console.log('Uploading directly to Supabase Storage...');
+      const result = await uploadImage(file, 'covers');
       
-      // Check current user for debugging
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      console.log('Current user:', user?.id, 'Auth error:', userError);
-      
-      // Generate unique filename
-      const timestamp = new Date().getTime();
-      const randomString = Math.random().toString(36).substring(2, 15);
-      const fileExtension = file.name.split('.').pop()?.toLowerCase();
-      const fileName = `${timestamp}_${randomString}.${fileExtension}`;
-      const filePath = `covers/${fileName}`;
-
-      console.log('Generated file path:', filePath);
-
-      // Upload file directly using client
-      const { data, error } = await supabase.storage
-        .from('images')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (error) {
-        console.error('Upload error:', error);
-        throw new Error(error.message || 'Failed to upload image');
+      if (result.error) {
+        alert(`Failed to upload image: ${result.error}`);
+        return;
       }
 
-      console.log('Upload successful:', data);
-
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('images')
-        .getPublicUrl(filePath);
-
-      console.log('Generated public URL:', urlData.publicUrl);
-
-      setCoverImage(urlData.publicUrl);
-      console.log('Cover image state updated');
-
+      if (result.data) {
+        setCoverImage(result.data.url);
+      }
     } catch (error) {
       console.error('Error uploading image:', error);
-      alert(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert('Failed to upload image. Please try again.');
     } finally {
-      console.log('Upload process completed, clearing loading state');
       setIsUploadingImage(false);
-      // Clear the input so the same file can be selected again if needed
-      event.target.value = '';
     }
   };
 
-  if (authLoading || !isAuthenticated) {
+  if (authLoading || !isAuthenticated || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -217,7 +281,15 @@ export default function WritePage() {
       <div className="container max-w-4xl mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Write New Post</h1>
+          <div className="flex items-center space-x-4">
+            <Link href={`/posts/${slug}`}>
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Post
+              </Button>
+            </Link>
+            <h1 className="text-3xl font-bold">Edit Post</h1>
+          </div>
           <div className="flex items-center space-x-2">
             <Button
               variant="outline"
@@ -240,7 +312,7 @@ export default function WritePage() {
               ) : (
                 <Eye className="mr-2 h-4 w-4" />
               )}
-              Publish
+              {isPublished ? 'Update & Publish' : 'Publish'}
             </Button>
           </div>
         </div>
@@ -393,6 +465,18 @@ export default function WritePage() {
                 <div>Characters: {content.length}</div>
                 <div>Words: {content.split(/\s+/).filter(Boolean).length}</div>
                 <div>Reading time: ~{Math.ceil(content.split(/\s+/).filter(Boolean).length / 200)} min</div>
+              </CardContent>
+            </Card>
+
+            {/* Current Status */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Current Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Badge variant={isPublished ? "default" : "secondary"}>
+                  {isPublished ? "Published" : "Draft"}
+                </Badge>
               </CardContent>
             </Card>
           </div>

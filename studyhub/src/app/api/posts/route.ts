@@ -18,9 +18,33 @@ export async function GET(request: NextRequest) {
 
     // Check if user is requesting their own posts (can see drafts)
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    
+    // Try to get user from authorization header first, then fallback to cookies
+    const authHeader = request.headers.get('authorization');
+    let user = null;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const { data } = await supabase.auth.getUser(token);
+      user = data.user;
+    } else {
+      const { data } = await supabase.auth.getUser();
+      user = data.user;
+    }
     const isOwnPosts = user && authorId === user.id;
 
+    // For slug queries, if user is authenticated, allow them to see their drafts too
+    const slugQuery = searchParams.get('slug');
+    const shouldShowDrafts = isOwnPosts || (user && slugQuery);
+
+    console.log('GET /api/posts - Debug info:');
+    console.log('- Current user:', user?.id);
+    console.log('- Requested author:', authorId);
+    console.log('- Slug query:', slugQuery);
+    console.log('- isOwnPosts:', isOwnPosts);
+    console.log('- shouldShowDrafts:', shouldShowDrafts);
+    console.log('- published filter:', shouldShowDrafts ? undefined : true);
+    
     const result = await getPostsSupabase({
       page,
       limit,
@@ -28,8 +52,12 @@ export async function GET(request: NextRequest) {
       tagSlug,
       search,
       authorId,
-      published: isOwnPosts ? undefined : true, // Show drafts only for own posts
+      slug: slugQuery,
+      published: shouldShowDrafts ? undefined : true, // Show drafts for own posts or when editing
     });
+
+    console.log('- Posts returned:', result.posts.length);
+    console.log('- Posts is_published values:', result.posts.map(p => p.isPublished));
 
     return NextResponse.json(result);
   } catch (error) {
