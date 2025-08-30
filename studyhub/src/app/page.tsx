@@ -2,10 +2,36 @@ import { MainLayout } from "@/components/layout/main-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { BookOpen, Users, TrendingUp } from "lucide-react"
+import { Avatar } from "@/components/ui/avatar"
+import { BookOpen, Users, TrendingUp, Calendar, Clock, Eye, User } from "lucide-react"
 import Link from "next/link"
+import { getPostsSupabase } from "@/lib/database/posts-supabase"
 
-export default function Home() {
+async function getLatestPosts() {
+  try {
+    const result = await getPostsSupabase({
+      page: 1,
+      limit: 3,
+      published: true,
+    });
+    return result.posts;
+  } catch (error) {
+    console.error('Error fetching latest posts:', error);
+    return [];
+  }
+}
+
+export default async function Home() {
+  const latestPosts = await getLatestPosts();
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
   return (
     <MainLayout>
       {/* Hero Section */}
@@ -80,30 +106,84 @@ export default function Home() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Placeholder posts - will be replaced with real data */}
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Badge variant="secondary">Tutorial</Badge>
-                    <span className="text-sm text-gray-500">2 days ago</span>
-                  </div>
-                  <CardTitle className="text-lg">
-                    Getting Started with Next.js 14
-                  </CardTitle>
-                  <CardDescription>
-                    Learn the basics of building modern web applications with Next.js 14 and React.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center space-x-2 text-sm text-gray-500">
-                    <span>By John Doe</span>
-                    <span>•</span>
-                    <span>5 min read</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            {latestPosts.length > 0 ? (
+              latestPosts.map((post) => (
+                <Card key={post.id} className="hover:shadow-lg transition-shadow">
+                  {post.coverImage && (
+                    <div className="relative h-48 overflow-hidden rounded-t-lg">
+                      <img
+                        src={post.coverImage}
+                        alt={post.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <CardHeader>
+                    <div className="flex items-center justify-between mb-2">
+                      {post.category && (
+                        <Badge 
+                          variant="secondary"
+                          style={{ 
+                            borderColor: post.category.color || undefined,
+                            color: post.category.color || undefined 
+                          }}
+                        >
+                          {post.category.name}
+                        </Badge>
+                      )}
+                      <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        <span>{formatDate(post.publishedAt)}</span>
+                      </div>
+                    </div>
+                    <Link href={`/posts/${post.slug}`}>
+                      <CardTitle className="text-lg hover:underline line-clamp-2">
+                        {post.title}
+                      </CardTitle>
+                    </Link>
+                    <CardDescription className="line-clamp-3">
+                      {post.excerpt}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Avatar className="h-6 w-6">
+                          {post.author.avatarUrl ? (
+                            <img src={post.author.avatarUrl} alt={post.author.fullName || 'Author'} />
+                          ) : (
+                            <User className="h-3 w-3" />
+                          )}
+                        </Avatar>
+                        <span className="text-sm text-muted-foreground">
+                          {post.author.fullName || 'Anonymous'}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+                        <div className="flex items-center space-x-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{post.readingTime}min</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Eye className="h-3 w-3" />
+                          <span>{post.viewCount}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <h3 className="text-xl font-semibold mb-2">No posts yet</h3>
+                <p className="text-muted-foreground mb-4">
+                  Be the first to share your knowledge with the community!
+                </p>
+                <Button asChild>
+                  <Link href="/write">Write Your First Post</Link>
+                </Button>
+              </div>
+            )}
           </div>
           
           <div className="text-center mt-8">
