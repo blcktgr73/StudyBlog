@@ -48,7 +48,7 @@ export default async function PostPage({ params }: PostPageProps) {
     // User not authenticated, that's fine
   }
 
-  const post = await getPost(slug, currentUserId);
+  const post = await getPost(slug);
 
   if (!post) {
     notFound();
