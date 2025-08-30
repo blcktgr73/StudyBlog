@@ -50,7 +50,7 @@ export async function PATCH(
     const body = await request.json();
     const { title, content, categoryId, tagIds, isPublished, coverImage } = body;
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (title !== undefined) updateData.title = title;
     if (content !== undefined) updateData.content = content;
     if (categoryId !== undefined) updateData.categoryId = categoryId;

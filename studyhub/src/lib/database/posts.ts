@@ -328,7 +328,7 @@ export async function getPosts(options: {
       slug: tag.tagSlug,
     });
     return acc;
-  }, {} as Record<string, any[]>);
+  }, {} as Record<string, unknown[]>);
 
   // Format results
   const formattedPosts = postsResult.map(post => ({

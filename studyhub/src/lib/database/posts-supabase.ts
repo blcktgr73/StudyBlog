@@ -75,7 +75,7 @@ export async function getPostsSupabase(options: {
     }
 
     // Transform the data to match our expected format
-    const transformedPosts: PostWithDetails[] = (posts || []).map((post: any) => ({
+    const transformedPosts: PostWithDetails[] = (posts || []).map((post: Record<string, unknown>) => ({
       id: post.id,
       title: post.title,
       slug: post.slug,

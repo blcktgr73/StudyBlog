@@ -5,7 +5,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { createClient } from '@/lib/supabase/server';
-import { getPostBySlug } from '@/lib/database/posts';
 import { getPostBySlugSupabase } from '@/lib/database/posts-supabase';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,7 +25,7 @@ interface PostPageProps {
   params: Promise<{ slug: string }>;
 }
 
-async function getPost(slug: string, userId?: string) {
+async function getPost(slug: string) {
   try {
     const post = await getPostBySlugSupabase(slug);
     return post;

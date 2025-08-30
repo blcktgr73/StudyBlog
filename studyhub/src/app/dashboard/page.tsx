@@ -85,7 +85,7 @@ export default function DashboardPage() {
   }
 
   const publishedPosts = userPosts.filter(post => post.isPublished);
-  const draftPosts = userPosts.filter(post => !post.isPublished);
+  // const draftPosts = userPosts.filter(post => !post.isPublished);
   const totalViews = userPosts.reduce((sum, post) => sum + post.viewCount, 0);
   const totalLikes = userPosts.reduce((sum, post) => sum + post.likeCount, 0);
 
@@ -199,7 +199,7 @@ export default function DashboardPage() {
               </div>
             ) : userPosts.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground mb-4">You haven't written any posts yet.</p>
+                <p className="text-muted-foreground mb-4">You haven&apos;t written any posts yet.</p>
                 <Button asChild>
                   <Link href="/write">Write Your First Post</Link>
                 </Button>

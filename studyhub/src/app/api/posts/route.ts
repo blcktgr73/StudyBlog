@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createPost, getPosts } from '@/lib/database/posts';
 import { createPostSupabase, getPostsSupabase } from '@/lib/database/posts-supabase';
 
 // GET /api/posts - Get posts with pagination and filtering
