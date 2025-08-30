@@ -14,9 +14,13 @@ if (!connectionString) {
 }
 
 // For query purposes
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const queryClient = connectionString ? postgres(connectionString) : null as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const db = queryClient ? drizzle(queryClient, { schema }) : null as any;
 
 // For migrations
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const migrationClient = connectionString ? postgres(connectionString, { max: 1 }) : null as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const migrationDb = migrationClient ? drizzle(migrationClient, { schema }) : null as any;

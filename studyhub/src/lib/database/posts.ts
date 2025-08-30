@@ -192,7 +192,8 @@ export async function getPostBySlug(slug: string, userId?: string): Promise<Post
       slug: postData.categorySlug!,
       color: postData.categoryColor,
     } : null,
-    tags: postTagsResult.filter(tag => tag.id !== null).map(tag => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    tags: postTagsResult.filter((tag: any) => tag.id !== null).map((tag: any) => ({
       id: tag.id!,
       name: tag.name!,
       slug: tag.slug!,
@@ -327,7 +328,8 @@ export async function getPosts(options: {
     .where(sql`${postTags.postId} = ANY(${postIds})`) : [];
 
   // Group tags by post ID
-  const tagsByPostId = allTagsResult.reduce((acc, tag) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tagsByPostId = allTagsResult.reduce((acc: any, tag: any) => {
     if (!acc[tag.postId]) acc[tag.postId] = [];
     acc[tag.postId].push({
       id: tag.tagId,
