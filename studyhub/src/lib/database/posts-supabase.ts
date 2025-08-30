@@ -55,7 +55,7 @@ export async function getPostsSupabase(options: {
     // Apply ordering and pagination
     const { data: posts, error, count } = await query
       .order('is_pinned', { ascending: false })
-      .order('published_at', { ascending: false, nullsLast: true })
+      .order('published_at', { ascending: false })
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
