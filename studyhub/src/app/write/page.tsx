@@ -33,8 +33,6 @@ export default function WritePage() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
-  const [isPublished, setIsPublished] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Redirect if not authenticated

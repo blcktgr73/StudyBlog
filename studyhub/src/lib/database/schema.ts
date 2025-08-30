@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, boolean, integer, jsonb, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, boolean, integer, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Users table - extends Supabase auth.users
@@ -85,7 +85,7 @@ export const comments = pgTable('comments', {
   content: text('content').notNull(),
   authorId: uuid('author_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   postId: uuid('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
-  parentId: uuid('parent_id').references(() => comments.id, { onDelete: 'cascade' }), // for nested comments
+  parentId: uuid('parent_id'), // for nested comments - will be linked later
   isEdited: boolean('is_edited').default(false).notNull(),
   likeCount: integer('like_count').default(0).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

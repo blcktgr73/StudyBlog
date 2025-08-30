@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -23,7 +23,7 @@ interface PostsResponse {
   };
 }
 
-export default function PostsPage() {
+function PostsList() {
   const searchParams = useSearchParams();
   const [posts, setPosts] = useState<PostWithDetails[]>([]);
   const [pagination, setPagination] = useState<PostsResponse['pagination'] | null>(null);
@@ -305,5 +305,13 @@ export default function PostsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PostsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PostsList />
+    </Suspense>
   );
 }

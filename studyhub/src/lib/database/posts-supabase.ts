@@ -2,6 +2,41 @@ import { createClient } from '@/lib/supabase/server';
 import type { PostWithDetails } from './posts';
 import { createSlug, processPostContent } from './posts';
 
+// Type for Supabase post data with joins
+type SupabasePostData = {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt: string | null;
+  cover_image: string | null;
+  author_id: string;
+  category_id: string | null;
+  is_published: boolean;
+  is_pinned: boolean;
+  view_count: number;
+  like_count: number;
+  comment_count: number;
+  reading_time: number;
+  seo_title: string | null;
+  seo_description: string | null;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+  users?: {
+    id: string;
+    full_name: string | null;
+    email: string;
+    avatar_url: string | null;
+  };
+  categories?: {
+    id: string;
+    name: string;
+    slug: string;
+    color: string | null;
+  };
+};
+
 // Get posts using Supabase client instead of direct SQL
 export async function getPostsSupabase(options: {
   page?: number;
@@ -16,7 +51,6 @@ export async function getPostsSupabase(options: {
     page = 1,
     limit = 10,
     categorySlug,
-    tagSlug,
     search,
     authorId,
     published = true,
@@ -53,7 +87,7 @@ export async function getPostsSupabase(options: {
     }
 
     // Apply ordering and pagination
-    const { data: posts, error, count } = await query
+    const { data: posts, error } = await query
       .order('is_pinned', { ascending: false })
       .order('published_at', { ascending: false })
       .order('created_at', { ascending: false })
@@ -75,7 +109,7 @@ export async function getPostsSupabase(options: {
     }
 
     // Transform the data to match our expected format
-    const transformedPosts: PostWithDetails[] = (posts || []).map((post: Record<string, any>) => ({
+    const transformedPosts: PostWithDetails[] = (posts || []).map((post: SupabasePostData) => ({
       id: post.id as string,
       title: post.title as string,
       slug: post.slug as string,
@@ -92,9 +126,9 @@ export async function getPostsSupabase(options: {
       readingTime: post.reading_time as number,
       seoTitle: post.seo_title as string | null,
       seoDescription: post.seo_description as string | null,
-      publishedAt: post.published_at as Date | null,
-      createdAt: post.created_at as Date,
-      updatedAt: post.updated_at as Date,
+      publishedAt: post.published_at ? new Date(post.published_at) : null,
+      createdAt: new Date(post.created_at),
+      updatedAt: new Date(post.updated_at),
       author: {
         id: (post.users?.id || post.author_id) as string,
         fullName: (post.users?.full_name || null) as string | null,
@@ -215,9 +249,9 @@ export async function createPostSupabase(data: {
       readingTime: post.reading_time as number,
       seoTitle: post.seo_title as string | null,
       seoDescription: post.seo_description as string | null,
-      publishedAt: post.published_at as Date | null,
-      createdAt: post.created_at as Date,
-      updatedAt: post.updated_at as Date,
+      publishedAt: post.published_at ? new Date(post.published_at) : null,
+      createdAt: new Date(post.created_at),
+      updatedAt: new Date(post.updated_at),
       author: {
         id: post.author.id as string,
         fullName: post.author.full_name as string | null,
@@ -322,9 +356,9 @@ export async function getPostBySlugSupabase(slug: string): Promise<PostWithDetai
       readingTime: post.reading_time as number,
       seoTitle: post.seo_title as string | null,
       seoDescription: post.seo_description as string | null,
-      publishedAt: post.published_at as Date | null,
-      createdAt: post.created_at as Date,
-      updatedAt: post.updated_at as Date,
+      publishedAt: post.published_at ? new Date(post.published_at) : null,
+      createdAt: new Date(post.created_at),
+      updatedAt: new Date(post.updated_at),
       author: {
         id: (post.users?.id || post.author_id) as string,
         fullName: (post.users?.full_name || null) as string | null,

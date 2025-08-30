@@ -131,7 +131,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -150,7 +150,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Otherwise, they need to check their email
       set({ isLoading: false });
       return {};
-    } catch (error) {
+    } catch {
       set({ isLoading: false });
       return { error: 'An unexpected error occurred' };
     }
@@ -160,7 +160,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -172,7 +172,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // The auth state change will trigger refreshUser
       return {};
-    } catch (error) {
+    } catch {
       set({ isLoading: false });
       return { error: 'An unexpected error occurred' };
     }
@@ -182,7 +182,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
@@ -196,7 +196,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // OAuth will redirect, so loading state will be handled by the redirect
       return {};
-    } catch (error) {
+    } catch {
       set({ isLoading: false });
       return { error: 'An unexpected error occurred' };
     }
@@ -230,7 +230,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       // TODO: Update user profile in our database using Drizzle
       // For now, we'll update the Supabase user metadata
-      const { data, error } = await supabase.auth.updateUser({
+      const { error } = await supabase.auth.updateUser({
         data: {
           full_name: profile.fullName,
           avatar_url: profile.avatarUrl,
@@ -249,7 +249,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
 
       return {};
-    } catch (error) {
+    } catch {
       set({ isLoading: false });
       return { error: 'An unexpected error occurred' };
     }

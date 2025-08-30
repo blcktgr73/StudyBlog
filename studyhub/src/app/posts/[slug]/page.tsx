@@ -44,7 +44,7 @@ export default async function PostPage({ params }: PostPageProps) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     currentUserId = user?.id;
-  } catch (error) {
+  } catch {
     // User not authenticated, that's fine
   }
 
@@ -180,7 +180,7 @@ export default async function PostPage({ params }: PostPageProps) {
                 rehypePlugins={[rehypeRaw]}
                 components={{
                   // Custom styling for code blocks
-                  code: ({ node, className, children, ...props }) => {
+                  code: ({ className, children, ...props }) => {
                     const match = /language-(\w+)/.exec(className || '');
                     return match ? (
                       <code 
@@ -199,7 +199,7 @@ export default async function PostPage({ params }: PostPageProps) {
                     );
                   },
                   // Custom styling for links
-                  a: ({ node, children, ...props }) => (
+                  a: ({ children, ...props }) => (
                     <a 
                       className="text-primary hover:underline" 
                       target="_blank" 

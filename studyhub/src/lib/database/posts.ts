@@ -5,6 +5,7 @@ import type { Post, NewPost, Category, Tag } from './schema';
 import slugify from 'slugify';
 import readingTime from 'reading-time';
 
+
 // Post with author and category information
 export type PostWithDetails = Post & {
   author: {
@@ -182,7 +183,7 @@ export async function getPostBySlug(slug: string, userId?: string): Promise<Post
     author: {
       id: postData.authorId,
       fullName: postData.authorName,
-      email: postData.authorEmail,
+      email: postData.authorEmail || '',
       avatarUrl: postData.authorAvatar,
     },
     category: postData.categoryName ? {
@@ -191,7 +192,11 @@ export async function getPostBySlug(slug: string, userId?: string): Promise<Post
       slug: postData.categorySlug!,
       color: postData.categoryColor,
     } : null,
-    tags: postTagsResult,
+    tags: postTagsResult.filter(tag => tag.id !== null).map(tag => ({
+      id: tag.id!,
+      name: tag.name!,
+      slug: tag.slug!,
+    })),
   };
 }
 
@@ -217,7 +222,8 @@ export async function getPosts(options: {
 
   const offset = (page - 1) * limit;
 
-  let query = db
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query: any = db
     .select({
       id: posts.id,
       title: posts.title,
@@ -307,7 +313,8 @@ export async function getPosts(options: {
   const totalPages = Math.ceil(totalCount / limit);
 
   // Get tags for each post
-  const postIds = postsResult.map(post => post.id);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const postIds = postsResult.map((post: any) => post.id);
   const allTagsResult = postIds.length > 0 ? await db
     .select({
       postId: postTags.postId,
@@ -331,7 +338,8 @@ export async function getPosts(options: {
   }, {} as Record<string, unknown[]>);
 
   // Format results
-  const formattedPosts = postsResult.map(post => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const formattedPosts = postsResult.map((post: any) => ({
     id: post.id,
     title: post.title,
     slug: post.slug,
